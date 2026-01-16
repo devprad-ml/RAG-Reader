@@ -1,0 +1,45 @@
+--- Secrets (CRITICAL) ---
+
+.env
+.env.local
+.env.*.local
+*.pem
+
+--- Python / Backend ---
+
+pycache/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+Virtual Environments
+
+venv/
+.venv/
+env/
+
+Database (SQLite)
+
+*.db
+*.sqlite3
+local_knowledge_base.db
+
+--- Node / Frontend ---
+
+node_modules/
+.next/
+out/
+build/
+dist/
+.DS_Store
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+--- IDEs ---
+
+.vscode/
+.idea/
+*.swp
