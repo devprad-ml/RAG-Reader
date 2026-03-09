@@ -15,7 +15,7 @@ pycache/
 
 Virtual Environments
 
-venv/
+ven/
 .venv/
 env/
 
