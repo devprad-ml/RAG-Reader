@@ -17,6 +17,13 @@ class Settings(BaseSettings):
     PINECONE_ENV: str = Field(default="gcp-starter")
     OPENAI_API_KEY: str = Field(default="")
 
+    CHUNK_SIZE: int = Field(default=512)
+    CHUNK_OVERLAP: int = Field(default=64)
+
+    # --- Retrieval ---
+    # Minimum cosine similarity score to consider a chunk relevant.
+    SIMILARITY_THRESHOLD: float = Field(default=0.5)
+
     class Config:
         env_file = ".env"
         case_sensitive = True
