@@ -22,7 +22,10 @@ class Settings(BaseSettings):
 
     # --- Retrieval ---
     # Minimum cosine similarity score to consider a chunk relevant.
+    
     SIMILARITY_THRESHOLD: float = Field(default=0.5)
+    RERANK_TOP_K: int = Field(default=10)
+    RERANKER_MODEL: str = Field(default="cross-encoder/ms-marco-MiniLM-L-6-v2")
 
     class Config:
         env_file = ".env"
