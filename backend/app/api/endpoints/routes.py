@@ -1,40 +1,60 @@
+import hashlib
+import logging
+
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.document import Document, ProcessingStatus
 from app.services.vector_store import vector_service
 
-#init router
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/upload")
-async def upload_document(file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db)):
 
+@router.post("/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
-    try:
-        # read file contents
-        content = await file.read()
+    content = await file.read()
 
-        # save file to SQLite (local DB)
-        new_doc = Document(
-            filename=file.filename,
-            status=ProcessingStatus.PROCESSING
+    # Compute a SHA-256 fingerprint of the raw bytes.
+    # This catches duplicate uploads regardless of filename changes.
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    # --- Duplicate check ---
+    # The Document model already had a unique file_hash column — wire it up.
+    existing = await db.execute(
+        select(Document).where(Document.file_hash == file_hash)
+    )
+    existing_doc = existing.scalar_one_or_none()
+
+    if existing_doc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Document already uploaded as '{existing_doc.filename}' (id={existing_doc.id})."
         )
 
-        db.add(new_doc)
-        await db.commit()
-        await db.refresh(new_doc)
+    # Create the DB record before processing so we have something to update on failure.
+    new_doc = Document(
+        filename=file.filename,
+        file_hash=file_hash,
+        status=ProcessingStatus.PROCESSING
+    )
+    db.add(new_doc)
+    await db.commit()
+    await db.refresh(new_doc)
 
-        # now trigger vector processing.(async operation)
-        # a real traffic heavy app will have a cache(Celery/ Redis)
-
+    # --- Vector processing ---
+    # If this raises, we catch it below, mark the record FAILED with the error
+    # message, and re-raise so the client still gets a 500.
+    # Without this, failed uploads are left stuck in PROCESSING forever.
+    try:
         result = await vector_service.process_pdf(content, file.filename)
-
-        # update status when processing is completed
-
         new_doc.status = ProcessingStatus.COMPLETED
         await db.commit()
 
@@ -44,13 +64,10 @@ async def upload_document(file: UploadFile = File(...),
             "chunks": result["chunks_processed"],
             "message": "File processed and indexed successfully."
         }
+
     except Exception as e:
-        # log error and update DB
-        print(f"Error: {e}")
-
+        logger.exception("Vector processing failed for '%s'", file.filename)
+        new_doc.status = ProcessingStatus.FAILED
+        new_doc.error_message = str(e)
+        await db.commit()
         raise HTTPException(status_code=500, detail=str(e))
-    
-        
-    
-
-

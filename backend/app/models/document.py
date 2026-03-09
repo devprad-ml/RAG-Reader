@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, Enum
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 from app.db.session import Base
 
@@ -17,15 +17,17 @@ class Document(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String, index=True)
-    file_url = Column(String) # Path to S3 or local storage
-    
-    # Store the file hash to prevent duplicate uploads
+    file_url = Column(String)  # Path to S3 or local storage
+
+    # SHA-256 fingerprint of the file bytes — prevents duplicate uploads
+    # regardless of whether the filename was changed between attempts.
     file_hash = Column(String, unique=True, index=True)
-    
+
     status = Column(Enum(ProcessingStatus), default=ProcessingStatus.PENDING)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Error message if processing failed
+    # utcnow() is deprecated in Python 3.12+; use timezone-aware datetime instead.
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # Populated on FAILED status so operators can diagnose without digging through logs.
     error_message = Column(String, nullable=True)
 
     def __repr__(self):
