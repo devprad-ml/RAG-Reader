@@ -22,10 +22,20 @@ class Settings(BaseSettings):
 
     # --- Retrieval ---
     # Minimum cosine similarity score to consider a chunk relevant.
-    
+
     SIMILARITY_THRESHOLD: float = Field(default=0.5)
     RERANK_TOP_K: int = Field(default=10)
     RERANKER_MODEL: str = Field(default="cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+    # --- Batching ---
+    EMBEDDING_BATCH_SIZE: int = Field(default=256)
+    PAGE_BATCH_SIZE: int = Field(default=50)
+
+    # --- History ---
+    # Max tokens to allocate for conversation history in the LLM prompt.
+    # Keeps total prompt well under gpt-4o-mini's 128k limit while leaving
+    # room for the system prompt (~500 tokens) and the model's response.
+    MAX_HISTORY_TOKENS: int = Field(default=4000)
 
     class Config:
         env_file = ".env"
