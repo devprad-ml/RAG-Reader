@@ -27,6 +27,10 @@ class Document(Base):
     # utcnow() is deprecated in Python 3.12+; use timezone-aware datetime instead.
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    # Progress tracking for large documents
+    total_chunks = Column(Integer, default=0)
+    processed_chunks = Column(Integer, default=0)
+
     # Populated on FAILED status so operators can diagnose without digging through logs.
     error_message = Column(String, nullable=True)
 
